@@ -2,11 +2,15 @@
 
 module Main where
 
+import Compiler (compile)
 import Parser (parse)
 import Std
 import Text.Parsec (runParser)
 
 main :: IO ()
 main =
-  let res = runParser parse () "Parsing variable" "hello123 arg1 arg2 = 22"
-   in print res
+  let ast = runParser parse () "Parsing program" "hello123 = 22"
+      lua = compile <$> ast
+   in do
+        print ast
+        print lua

@@ -3,7 +3,9 @@
 module Parser
   ( parse,
     AST,
-    Statement,
+    Statement (..),
+    Identifier (..),
+    Value (..),
   )
 where
 
