@@ -9,8 +9,9 @@ module Parser
   )
 where
 
+import Data.Char (isSpace)
 import Std
-import Text.Parsec (alphaNum, digit, endOfLine, eof, lower, many, runParser, space, spaces)
+import Text.Parsec (alphaNum, digit, endOfLine, eof, lookAhead, lower, many, many1, optional, runParser, satisfy, space, spaces, unexpected)
 import Text.Parsec.Char (char)
 import Text.Parsec.Combinator (manyTill)
 import Text.Parsec.Prim (try)
@@ -35,13 +36,18 @@ data Statement
 
 data Value
   = Int Integer
+  | Variable Identifier
+  | Call Value [Value]
   deriving (Show)
 
 ws :: Parser ()
-ws = spaces
+ws = void $ many (satisfy (\c -> isSpace c && c /= '\n'))
 
-eolws :: Parser ()
-eolws = void $ manyTill space (try (void endOfLine <|> eof))
+nl :: Parser ()
+nl = ws *> (void endOfLine <|> eof)
+
+muchWS :: Parser ()
+muchWS = spaces *> optional eof
 
 identifier :: Parser Identifier
 identifier =
@@ -54,11 +60,11 @@ statement :: Parser Statement
 statement =
   let definition =
         do
-          ws -- TODO: Probably should not be here
+          muchWS
           name <- identifier
           args <- many (try $ ws *> identifier)
-          _ <- ws *> char '=' *> ws
-          v <- value <* eolws
+          v <- ws *> char '=' *> value
+          muchWS
           return $ Definition name args v
    in definition
 
@@ -71,7 +77,13 @@ int =
     return (first : rest)
 
 value :: Parser Value
-value = Int <$> int
+value =
+  do
+    atoms <- many1 (ws *> ((Int <$> try int) <|> (Variable <$> try identifier))) <* nl
+    case atoms of
+      [] -> unexpected "Empty atoms list though many1 was used."
+      [x] -> return x
+      x : xs -> return $ Call x xs
 
 parse :: Parser AST
 parse = many statement

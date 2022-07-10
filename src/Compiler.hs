@@ -42,7 +42,11 @@ statement (Definition (Identifier name) args v) =
    in name <> " = " <> evalState (inner args) "" <> ";"
 
 value :: Value -> String
-value (Int v) = show v
+value val =
+  case val of
+    Int v -> show v
+    Variable (Identifier v) -> v
+    Call fn args -> value fn <> foldMap (\v -> "(" <> value v <> ")") args
 
 compile :: AST -> String
 compile ast =
