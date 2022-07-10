@@ -48,4 +48,4 @@ compile :: AST -> String
 compile ast =
   case ast of
     x : xs -> statement x <> "\n\n" <> compile xs
-    [] -> ""
+    [] -> "print(main);"

@@ -54,6 +54,7 @@ statement :: Parser Statement
 statement =
   let definition =
         do
+          ws -- TODO: Probably should not be here
           name <- identifier
           args <- many (try $ ws *> identifier)
           _ <- ws *> char '=' *> ws

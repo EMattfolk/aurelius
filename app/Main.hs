@@ -9,11 +9,12 @@ import Text.Parsec (runParser)
 
 main :: IO ()
 main =
-  let ast = runParser parse () "Parsing program" "hello123 a b = 22"
-      lua = compile <$> ast
-   in do
-        print ast
-        print lua
-        case lua of
-          Right l -> writeFile "program.lua" l
-          _ -> return ()
+  do
+    prog <- readFile "program.au"
+    let ast = runParser parse () "Parsing program" prog
+    let lua = compile <$> ast
+    print ast
+    print lua
+    case lua of
+      Right l -> writeFile "program.lua" l
+      _ -> return ()
