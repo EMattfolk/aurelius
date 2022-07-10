@@ -27,24 +27,19 @@ withIndent :: String -> Indent String
 withIndent s = get <#> (<> s)
 
 statement :: Statement -> String
-statement (Definition (Identifier name) args (Int v)) =
+statement (Definition (Identifier name) args v) =
   let inner as = case as of
         (Identifier arg) : xs ->
           do
-            let start = "function("
-            let middle = ")\n"
             indent
-            middle2 <- withIndent "return "
-            middle3 <- inner xs
+            bodyStart <- withIndent "return "
+            innerBody <- inner xs
             dedent
             end <- withIndent "end"
-
-            return (start <> arg <> middle <> middle2 <> middle3 <> ";\n" <> end)
-        [] -> return (show v)
-   in name
-        <> " = "
-        <> evalState (inner args) ""
-        <> ";"
+            return ("function(" <> arg <> ")\n" <> bodyStart <> innerBody <> ";\n" <> end)
+        [] ->
+          return (value v)
+   in name <> " = " <> evalState (inner args) "" <> ";"
 
 value :: Value -> String
 value (Int v) = show v
