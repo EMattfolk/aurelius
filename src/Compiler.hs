@@ -11,6 +11,7 @@ import Parser
     Expression (..),
     Identifier (..),
     Statement (..),
+    Symbol (..),
     parse,
   )
 import Std
@@ -46,6 +47,7 @@ expression val =
   case val of
     Int v -> show v
     Variable (Identifier v) -> v
+    BinOp (Symbol op) left right -> "(" <> expression left <> " " <> op <> " " <> expression right <> ")"
     Call fn args -> expression fn <> foldMap (\v -> "(" <> expression v <> ")") args
 
 compile :: AST -> String

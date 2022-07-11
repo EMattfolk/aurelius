@@ -5,13 +5,14 @@ module Parser
     AST,
     Statement (..),
     Identifier (..),
+    Symbol (..),
     Expression (..),
   )
 where
 
 import Data.Char (isSpace)
 import Std
-import Text.Parsec (alphaNum, digit, endOfLine, eof, lookAhead, lower, many, many1, optional, runParser, satisfy, space, spaces, unexpected, (<?>))
+import Text.Parsec (alphaNum, digit, endOfLine, eof, lookAhead, lower, many, many1, oneOf, optionMaybe, optional, runParser, satisfy, sepBy1, sepEndBy1, space, spaces, unexpected, (<?>))
 import Text.Parsec.Char (char)
 import Text.Parsec.Combinator (manyTill)
 import Text.Parsec.Prim (try)
@@ -28,6 +29,9 @@ import Text.Parsec.String (Parser)
 newtype Identifier = Identifier String
   deriving (Show)
 
+newtype Symbol = Symbol String
+  deriving (Show)
+
 type AST = [Statement]
 
 data Statement
@@ -37,17 +41,25 @@ data Statement
 data Expression
   = Int Integer
   | Variable Identifier
+  | BinOp Symbol Expression Expression
   | Call Expression [Expression]
   deriving (Show)
 
 ws :: Parser ()
 ws = void $ many (satisfy (\c -> isSpace c && c /= '\n'))
 
+ws1 :: Parser ()
+ws1 = void $ many1 (satisfy (\c -> isSpace c && c /= '\n'))
+
 nl :: Parser ()
 nl = ws *> (void endOfLine <|> eof)
 
 muchWS :: Parser ()
 muchWS = spaces *> optional eof
+
+symbol :: Parser Symbol
+symbol =
+  Symbol <$> many1 (oneOf "|&<=>*/+-#$?!^~")
 
 identifier :: Parser Identifier
 identifier =
@@ -76,16 +88,27 @@ int =
     rest <- many digit
     return (first : rest)
 
+term :: Parser Expression
+term =
+  (Int <$> try int)
+    <|> (Variable <$> try identifier)
+
 expression :: Parser Expression
 expression =
-  ( do
-      atoms <- many1 (ws *> ((Int <$> try int) <|> (Variable <$> try identifier))) <* nl
-      case atoms of
-        [] -> unexpected "Empty atoms list though many1 was used."
-        [x] -> return x
-        x : xs -> return $ Call x xs
-  )
-    <?> "expression"
+  let inner =
+        ( do
+            atoms <- ws *> sepEndBy1 term ws1
+            maybeBinOp <- ws *> optionMaybe (try symbol)
+            let leftSide = case atoms of
+                  [] -> head atoms -- Cannot happen
+                  [x] -> x
+                  x : xs -> Call x xs
+            ( case maybeBinOp of
+                Just binOp -> BinOp binOp leftSide <$> inner
+                Nothing -> return leftSide
+              )
+        )
+   in inner <* nl <?> "expression"
 
 parse :: Parser AST
 parse = many statement <* eof
