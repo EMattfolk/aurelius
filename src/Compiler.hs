@@ -8,9 +8,9 @@ import Data.Foldable (fold)
 import Data.List (intersperse)
 import Parser
   ( AST,
+    Expression (..),
     Identifier (..),
     Statement (..),
-    Value (..),
     parse,
   )
 import Std
@@ -38,15 +38,15 @@ statement (Definition (Identifier name) args v) =
             end <- withIndent "end"
             return ("function(" <> arg <> ")\n" <> bodyStart <> innerBody <> ";\n" <> end)
         [] ->
-          return (value v)
+          return (expression v)
    in name <> " = " <> evalState (inner args) "" <> ";"
 
-value :: Value -> String
-value val =
+expression :: Expression -> String
+expression val =
   case val of
     Int v -> show v
     Variable (Identifier v) -> v
-    Call fn args -> value fn <> foldMap (\v -> "(" <> value v <> ")") args
+    Call fn args -> expression fn <> foldMap (\v -> "(" <> expression v <> ")") args
 
 compile :: AST -> String
 compile ast =

@@ -5,7 +5,7 @@ module Parser
     AST,
     Statement (..),
     Identifier (..),
-    Value (..),
+    Expression (..),
   )
 where
 
@@ -19,8 +19,8 @@ import Text.Parsec.String (Parser)
 
 -- AST = statement...
 -- statement = definition | ...
--- definition = identifier identifier... '=' value
--- value = int | call
+-- definition = identifier identifier... '=' expression
+-- expression = int | call
 -- call = identifier identifier...
 -- identifier = [a-z][a-zA-Z0-9]+
 -- int = [1-9][0-9]+
@@ -31,13 +31,13 @@ newtype Identifier = Identifier String
 type AST = [Statement]
 
 data Statement
-  = Definition Identifier [Identifier] Value
+  = Definition Identifier [Identifier] Expression
   deriving (Show)
 
-data Value
+data Expression
   = Int Integer
   | Variable Identifier
-  | Call Value [Value]
+  | Call Expression [Expression]
   deriving (Show)
 
 ws :: Parser ()
@@ -63,7 +63,7 @@ statement =
           muchWS
           name <- identifier
           args <- many (try $ ws *> identifier)
-          v <- ws *> char '=' *> value
+          v <- ws *> char '=' *> expression
           muchWS
           return $ Definition name args v
    in definition
@@ -76,8 +76,8 @@ int =
     rest <- many digit
     return (first : rest)
 
-value :: Parser Value
-value =
+expression :: Parser Expression
+expression =
   ( do
       atoms <- many1 (ws *> ((Int <$> try int) <|> (Variable <$> try identifier))) <* nl
       case atoms of
@@ -85,7 +85,7 @@ value =
         [x] -> return x
         x : xs -> return $ Call x xs
   )
-    <?> "value"
+    <?> "expression"
 
 parse :: Parser AST
 parse = many statement <* eof
