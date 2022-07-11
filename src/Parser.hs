@@ -11,7 +11,7 @@ where
 
 import Data.Char (isSpace)
 import Std
-import Text.Parsec (alphaNum, digit, endOfLine, eof, lookAhead, lower, many, many1, optional, runParser, satisfy, space, spaces, unexpected)
+import Text.Parsec (alphaNum, digit, endOfLine, eof, lookAhead, lower, many, many1, optional, runParser, satisfy, space, spaces, unexpected, (<?>))
 import Text.Parsec.Char (char)
 import Text.Parsec.Combinator (manyTill)
 import Text.Parsec.Prim (try)
@@ -78,12 +78,14 @@ int =
 
 value :: Parser Value
 value =
-  do
-    atoms <- many1 (ws *> ((Int <$> try int) <|> (Variable <$> try identifier))) <* nl
-    case atoms of
-      [] -> unexpected "Empty atoms list though many1 was used."
-      [x] -> return x
-      x : xs -> return $ Call x xs
+  ( do
+      atoms <- many1 (ws *> ((Int <$> try int) <|> (Variable <$> try identifier))) <* nl
+      case atoms of
+        [] -> unexpected "Empty atoms list though many1 was used."
+        [x] -> return x
+        x : xs -> return $ Call x xs
+  )
+    <?> "value"
 
 parse :: Parser AST
-parse = many statement
+parse = many statement <* eof
