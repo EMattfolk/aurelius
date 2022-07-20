@@ -6,7 +6,7 @@ module Parser
     Statement (..),
     Identifier (..),
     Symbol (..),
-    Expression (..),
+    Term (..),
   )
 where
 
@@ -35,14 +35,13 @@ newtype Symbol = Symbol String
 type AST = [Statement]
 
 data Statement
-  = Definition Identifier [Identifier] Expression
+  = Definition Identifier [Identifier] [Term]
   deriving (Show)
 
-data Expression
+data Term
   = Int Integer
   | Variable Identifier
-  | BinOp Symbol Expression Expression
-  | Call Expression [Expression]
+  | BinOp Symbol
   deriving (Show)
 
 ws :: Parser ()
@@ -75,7 +74,7 @@ statement =
           muchWS
           name <- identifier
           args <- many (try $ ws *> identifier)
-          v <- ws *> char '=' *> expression
+          v <- ws *> char '=' *> terms
           muchWS
           return $ Definition name args v
    in definition
@@ -88,27 +87,15 @@ int =
     rest <- many digit
     return (first : rest)
 
-term :: Parser Expression
+term :: Parser Term
 term =
   (Int <$> try int)
     <|> (Variable <$> try identifier)
+    <|> (BinOp <$> try symbol)
 
-expression :: Parser Expression
-expression =
-  let inner =
-        ( do
-            atoms <- ws *> sepEndBy1 term ws1
-            maybeBinOp <- ws *> optionMaybe (try symbol)
-            let leftSide = case atoms of
-                  [] -> head atoms -- Cannot happen
-                  [x] -> x
-                  x : xs -> Call x xs
-            ( case maybeBinOp of
-                Just binOp -> BinOp binOp leftSide <$> inner
-                Nothing -> return leftSide
-              )
-        )
-   in inner <* nl <?> "expression"
+terms :: Parser [Term]
+terms =
+  ws *> sepEndBy1 term ws <* nl <?> "expression"
 
 parse :: Parser AST
 parse = many statement <* eof

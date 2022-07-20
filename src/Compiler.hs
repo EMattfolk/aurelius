@@ -7,11 +7,13 @@ import Control.Monad.State.Lazy (State, get, modify, runState)
 import Data.Foldable (fold)
 import Data.List (intersperse)
 import Parser
+  ( Identifier (..),
+    Symbol (..),
+  )
+import Parser2
   ( AST,
     Expression (..),
-    Identifier (..),
     Statement (..),
-    Symbol (..),
     parse,
   )
 import Std

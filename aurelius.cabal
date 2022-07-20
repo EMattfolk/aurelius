@@ -27,6 +27,7 @@ library
   exposed-modules:
       Compiler
       Parser
+      Parser2
       Std
   other-modules:
       Paths_aurelius
