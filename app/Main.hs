@@ -4,7 +4,7 @@ module Main where
 
 import Compiler (compile)
 import qualified Parser
-import Parser2 (parse)
+import Parser2 (simplify)
 import Std
 import Text.Parsec (runParser)
 
@@ -12,7 +12,7 @@ main :: IO ()
 main =
   do
     prog <- readFile "program.au"
-    let ast = parse =<< runParser Parser.parse () "Parsing program" prog
+    let ast = simplify <$> runParser Parser.parse () "Parsing program" prog
     let lua = compile <$> ast
     print (runParser Parser.parse () "Parsing program" prog)
     print lua

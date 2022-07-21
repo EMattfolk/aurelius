@@ -11,8 +11,9 @@ module Parser
 where
 
 import Data.Char (isSpace)
+import Data.List (uncons)
 import Std
-import Text.Parsec (alphaNum, digit, endOfLine, eof, lookAhead, lower, many, many1, oneOf, optionMaybe, optional, runParser, satisfy, sepBy1, sepEndBy1, space, spaces, unexpected, (<?>))
+import Text.Parsec (alphaNum, between, digit, endOfLine, eof, lookAhead, lower, many, many1, oneOf, optionMaybe, optional, runParser, satisfy, sepBy1, sepEndBy1, space, spaces, unexpected, (<?>))
 import Text.Parsec.Char (char)
 import Text.Parsec.Combinator (manyTill)
 import Text.Parsec.Prim (try)
@@ -42,6 +43,8 @@ data Term
   = Int Integer
   | Variable Identifier
   | BinOp Symbol
+  | Parenthesis [Term]
+  | Call Term [Term]
   deriving (Show)
 
 ws :: Parser ()
@@ -50,8 +53,8 @@ ws = void $ many (satisfy (\c -> isSpace c && c /= '\n'))
 ws1 :: Parser ()
 ws1 = void $ many1 (satisfy (\c -> isSpace c && c /= '\n'))
 
-nl :: Parser ()
-nl = ws *> (void endOfLine <|> eof)
+endOfExpr :: Parser ()
+endOfExpr = ws *> (void endOfLine <|> eof <|> void (lookAhead (try $ char ')')))
 
 muchWS :: Parser ()
 muchWS = spaces *> optional eof
@@ -91,11 +94,19 @@ term :: Parser Term
 term =
   (Int <$> try int)
     <|> (Variable <$> try identifier)
-    <|> (BinOp <$> try symbol)
+    <|> (Parenthesis <$> between (char '(') (char ')') terms)
 
 terms :: Parser [Term]
 terms =
-  ws *> sepEndBy1 term ws <* nl <?> "expression"
+  let group ts = case uncons ts of
+        Just (t, []) -> [t]
+        Just (t, tss) -> [Call t tss]
+   in do
+        left <- ws *> sepEndBy1 term ws <* (endOfExpr <|> void (lookAhead (try symbol)))
+        bin <- optionMaybe (BinOp <$> try symbol)
+        case bin of
+          Just b -> ((group left <> [b]) <>) <$> terms
+          Nothing -> return (group left)
 
 parse :: Parser AST
 parse = many statement <* eof

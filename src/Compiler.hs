@@ -14,7 +14,6 @@ import Parser2
   ( AST,
     Expression (..),
     Statement (..),
-    parse,
   )
 import Std
 
@@ -51,6 +50,7 @@ expression val =
     Variable (Identifier v) -> v
     BinOp (Symbol op) left right -> "(" <> expression left <> " " <> op <> " " <> expression right <> ")"
     Call fn args -> expression fn <> foldMap (\v -> "(" <> expression v <> ")") args
+    Parenthesis expr -> "(" <> expression expr <> ")"
 
 compile :: AST -> String
 compile ast =

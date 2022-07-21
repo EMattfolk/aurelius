@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Parser2
-  ( parse,
+  ( simplify,
     AST,
     Statement (..),
     Identifier (..),
@@ -34,6 +34,11 @@ satisfyMap f =
   let nextPos pos x xs = pos -- TODO
    in tokenPrim show nextPos f
 
+satisfyM :: (Parser.Term -> Maybe a) -> TermParser a
+satisfyM f =
+  let nextPos pos x xs = pos -- TODO
+   in tokenPrim show nextPos f
+
 -- AST = statement...
 -- statement = definition | ...
 -- definition = identifier identifier... '=' expression
@@ -57,39 +62,29 @@ data Expression
   | Variable Identifier
   | BinOp Symbol Expression Expression
   | Call Expression [Expression]
+  | Parenthesis Expression
   deriving (Show)
 
 type TermParser = Parsec [Parser.Term] ()
 
-statement :: Parser.Statement -> Either ParseError Statement
+statement :: Parser.Statement -> Statement
 statement s =
   case s of
     Parser.Definition name args terms ->
-      Definition name args <$> runParser expression () "Terms -> Expression" terms
+      Definition name args (expression terms)
 
-expression :: TermParser Expression
-expression =
-  let group terms =
-        case uncons terms of
-          Just (t, []) -> t
-          Just (t, ts) -> Call t ts
+expression :: [Parser.Term] -> Expression
+expression terms =
+  let toExpr t = case t of
+        Parser.Int i -> Int i
+        Parser.Variable i -> Variable i
+        Parser.Call t ts -> Call (toExpr t) (toExpr <$> ts)
+        Parser.Parenthesis t -> Parenthesis (expression t)
+      asSymbol t = case t of
+        Parser.BinOp s -> s
+   in case terms of
+        [t] -> toExpr t
+        left : op : ts -> BinOp (asSymbol op) (toExpr left) (expression ts)
 
-      toExpr t = case t of
-        Parser.Int i -> Just $ Int i
-        Parser.Variable i -> Just $ Variable i
-        _ -> Nothing
-
-      isSym s = case s of
-        Parser.BinOp _ -> True
-        _ -> False
-
-      p = do
-        left <- many1 $ satisfyMap toExpr
-        bin <- optionMaybe (try $ satisfy isSym)
-        case bin of
-          Just (Parser.BinOp sym) -> BinOp sym (group left) <$> expression
-          _ -> return (group left)
-   in p
-
-parse :: Parser.AST -> Either ParseError AST
-parse = mapM statement
+simplify :: Parser.AST -> AST
+simplify ast = statement <$> ast
