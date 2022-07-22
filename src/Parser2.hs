@@ -82,9 +82,11 @@ expression terms =
         Parser.Parenthesis t -> Parenthesis (expression t)
       asSymbol t = case t of
         Parser.BinOp s -> s
-   in case terms of
-        [t] -> toExpr t
-        left : op : ts -> BinOp (asSymbol op) (toExpr left) (expression ts)
+      accumulate acc rest =
+        case rest of
+          [] -> acc
+          op : right : ts -> accumulate (BinOp (asSymbol op) acc (toExpr right)) ts
+   in accumulate (toExpr (head terms)) (tail terms)
 
 simplify :: Parser.AST -> AST
 simplify ast = statement <$> ast
