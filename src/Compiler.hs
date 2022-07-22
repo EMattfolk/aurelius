@@ -43,17 +43,34 @@ statement (Definition (Identifier name) args v) =
           return (expression v)
    in name <> " = " <> evalState (inner args) "" <> ";"
 
+operatorName :: Symbol -> String
+operatorName (Symbol s) = case s of
+  "+" -> "add"
+  "*" -> "mul"
+  "-" -> "sub"
+  "|>" -> "applyFlipped"
+  ">>>" -> "composeFlipped"
+  _ -> ""
+
 expression :: Expression -> String
 expression val =
   case val of
     Int v -> show v
     Variable (Identifier v) -> v
-    BinOp (Symbol op) left right -> "(" <> expression left <> " " <> op <> " " <> expression right <> ")"
+    BinOp op left right -> operatorName op <> "(" <> expression left <> ", " <> expression right <> ")"
     Call fn args -> expression fn <> foldMap (\v -> "(" <> expression v <> ")") args
     Parenthesis expr -> "(" <> expression expr <> ")"
 
 compile :: AST -> String
 compile ast =
-  case ast of
-    x : xs -> statement x <> "\n\n" <> compile xs
-    [] -> "print(main);"
+  let prelude =
+        "add = function(x, y) return x + y end\n"
+          <> "mul = function(x, y) return x * y end\n"
+          <> "sub = function(x, y) return x - y end\n"
+          <> "applyFlipped = function(x, f) return f(x) end\n"
+          <> "composeFlipped = function(g, f) return function(x) return f(g(x)) end end\n\n"
+      compileStatements statements = case statements of
+        x : xs -> statement x <> "\n\n" <> compileStatements xs
+        [] -> ""
+      postlude = "print(main);"
+   in prelude <> compileStatements ast <> postlude
